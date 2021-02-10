@@ -6,8 +6,8 @@ import { fetchPlugin } from './plugins/fetch.plugin';
 
 const App = () => {
   const [input, setInput] = useState('');
-  const [code, setCode] = useState('');
   const ref = useRef<any>();
+  const iframeRef = useRef<any>();
 
   const onClick = async () => {
     if (!ref.current) {
@@ -23,7 +23,7 @@ const App = () => {
         global: 'window'
       }
     });
-    setCode(result.outputFiles[0].text);
+    iframeRef.current.contentWindow.postMessage(result.outputFiles[0].text, '*');
   }
 
   const startService = async () => {
@@ -37,12 +37,33 @@ const App = () => {
     startService();
   }, []);
 
+  const html = `
+    <html lang="en">
+      <head>
+      </head>
+      <body>
+        <div id="root"></div>
+        <script>
+          window.addEventListener('message', (event) => {
+            try {
+              eval(event.data)
+            } catch (err) {
+              const root = document.getElementById('root');
+              root.innerHTML = '<div style="color: red;"><h4>Runtime Error:</h4>' + err + '</div>'
+              console.error(err);
+            }
+          })
+        </script>
+      </body>
+    </html>
+  `;
+
   return <div>
     <textarea cols={100} rows={10} onChange={(e) => setInput(e.target.value)}></textarea>
     <div>
       <button onClick={onClick}>Submit</button>
     </div>
-    <pre>{code}</pre>
+    <iframe sandbox="allow-scripts" srcDoc={html} ref={iframeRef} height="200" width="720" title="preview"></iframe>
   </div>;
 }
 
